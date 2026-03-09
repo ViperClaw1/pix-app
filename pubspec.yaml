@@ -32,7 +32,7 @@ dependencies:
 
   # Медиа и файлы
   image_picker: ^1.0.7
-  file_picker: ^6.1.1
+  file_picker: ^8.1.2
 
   # Ссылки и устройство
   url_launcher: ^6.2.2

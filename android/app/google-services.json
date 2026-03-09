@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "72177547437",
+    "project_id": "pix-app-720f6",
+    "storage_bucket": "pix-app-720f6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:72177547437:android:9bec2beb3a52eb41316e24",
+        "android_client_info": {
+          "package_name": "com.pix.pix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKhs4jVHAVl1ah-0nekpKNKp7rm9Dgztk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

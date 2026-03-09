@@ -18,7 +18,7 @@ dependencies:
   # - onShowFileChooser для загрузки файлов из WebView
   # - гибкая настройка (mixed content, cache, user agent)
   # - активная поддержка и частые обновления
-  flutter_inappwebview: ^6.0.0
+  flutter_inappwebview: ^6.1.5
 
   # Firebase (Push)
   firebase_core: ^2.24.2

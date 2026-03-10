@@ -5,6 +5,13 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Release signing: set CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD in CI (e.g. Codemagic).
+val storePath = System.getenv("CM_KEYSTORE_PATH")
+val storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
+val keyAliasEnv = System.getenv("CM_KEY_ALIAS")
+val keyPasswordEnv = System.getenv("CM_KEY_PASSWORD")
+val hasReleaseSigning = storePath != null && storePassword != null && keyAliasEnv != null && keyPasswordEnv != null
+
 android {
     namespace = "com.pix.pix"
     compileSdk = flutter.compileSdkVersion
@@ -17,6 +24,17 @@ android {
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(storePath)
+                storePassword = storePassword
+                keyAlias = keyAliasEnv
+                keyPassword = keyPasswordEnv
+            }
+        }
     }
 
     defaultConfig {
@@ -32,9 +50,11 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

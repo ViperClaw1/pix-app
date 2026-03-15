@@ -15,7 +15,7 @@ val hasReleaseSigning = keystoreFile != null && keystoreFile.isFile &&
     !storePassword.isNullOrBlank() && !keyAliasEnv.isNullOrBlank() && !keyPasswordEnv.isNullOrBlank()
 
 android {
-    namespace = "com.pix.pix"
+    namespace = "com.pixap.pixap"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -41,7 +41,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.pix.pix"
+        applicationId = "com.pixap.pixap"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 21

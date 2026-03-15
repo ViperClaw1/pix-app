@@ -1,4 +1,4 @@
-# PIX — Mobile Wrapper для pixapp.kz
+# Pixap — Mobile Wrapper для pixapp.kz
 
 Production-ready Flutter приложение, оборачивающее веб-приложение https://pixapp.kz/ в нативную оболочку с доступом к камере, хранилищу, геолокации и push-уведомлениям.
 

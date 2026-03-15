@@ -1,4 +1,4 @@
-# Архитектура PIX Flutter
+# Архитектура Pixap Flutter
 
 ## Обзор
 

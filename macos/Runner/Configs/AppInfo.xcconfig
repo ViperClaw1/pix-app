@@ -8,7 +8,7 @@
 PRODUCT_NAME = pix_flutter
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = kz.pixapp.pixFlutter
+PRODUCT_BUNDLE_IDENTIFIER = com.pixap.pixap
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 kz.pixapp. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.pixap.pixap. All rights reserved.

@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "kz.pixapp" "\0"
+            VALUE "CompanyName", "com.pixap.pixap" "\0"
             VALUE "FileDescription", "pix_flutter" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "pix_flutter" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 kz.pixapp. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.pixap.pixap. All rights reserved." "\0"
             VALUE "OriginalFilename", "pix_flutter.exe" "\0"
             VALUE "ProductName", "pix_flutter" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

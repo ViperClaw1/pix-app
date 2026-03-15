@@ -3,8 +3,8 @@ import 'package:pix/app.dart';
 
 void main() {
   testWidgets('App loads and shows splash', (WidgetTester tester) async {
-    await tester.pumpWidget(const PixApp());
+    await tester.pumpWidget(const PixapApp());
     await tester.pump();
-    expect(find.text('PIX'), findsOneWidget);
+    expect(find.text('Pixap'), findsOneWidget);
   });
 }

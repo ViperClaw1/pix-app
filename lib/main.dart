@@ -27,5 +27,5 @@ void main() async {
     }());
   }
 
-  runApp(const PixApp());
+  runApp(const PixapApp());
 }

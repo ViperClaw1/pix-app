@@ -4,7 +4,7 @@
 
 1. **Firebase**
    - Создать проект в [Firebase Console](https://console.firebase.google.com).
-   - Добавить приложения Android (package `kz.pixapp.pix_flutter`) и iOS (bundle id из Xcode).
+   - Добавить приложения Android (package `com.pixap.pixap`) и iOS (bundle id `com.pixap.pixap`).
    - Скачать и положить:
      - `google-services.json` → `android/app/`
      - `GoogleService-Info.plist` → `ios/Runner/`

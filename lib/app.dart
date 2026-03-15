@@ -6,8 +6,8 @@ import 'core/constants.dart';
 import 'ui/splash_screen.dart';
 import 'webview/webview_page.dart';
 
-class PixApp extends StatelessWidget {
-  const PixApp({super.key});
+class PixapApp extends StatelessWidget {
+  const PixapApp({super.key});
 
   @override
   Widget build(BuildContext context) {

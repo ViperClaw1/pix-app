@@ -34,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const FlutterLogo(size: 80),
             const SizedBox(height: 24),
             Text(
-              'PIX',
+              'Pixap',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

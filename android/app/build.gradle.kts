@@ -10,7 +10,7 @@ val storePath = System.getenv("CM_KEYSTORE_PATH")
 val storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
 val keyAliasEnv = System.getenv("CM_KEY_ALIAS")
 val keyPasswordEnv = System.getenv("CM_KEY_PASSWORD")
-val keystoreFile = storePath?.let { java.io.File(it) }
+val keystoreFile = storePath?.let { path -> file(path) }
 val hasReleaseSigning = keystoreFile != null && keystoreFile.isFile &&
     !storePassword.isNullOrBlank() && !keyAliasEnv.isNullOrBlank() && !keyPasswordEnv.isNullOrBlank()
 
@@ -25,7 +25,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     signingConfigs {

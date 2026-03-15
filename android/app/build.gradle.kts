@@ -5,12 +5,14 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-// Release signing: set CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD in CI (e.g. Codemagic).
+// Release signing: Codemagic sets CM_KEYSTORE_PATH, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD.
 val storePath = System.getenv("CM_KEYSTORE_PATH")
 val storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
 val keyAliasEnv = System.getenv("CM_KEY_ALIAS")
 val keyPasswordEnv = System.getenv("CM_KEY_PASSWORD")
-val hasReleaseSigning = storePath != null && storePassword != null && keyAliasEnv != null && keyPasswordEnv != null
+val keystoreFile = storePath?.let { java.io.File(it) }
+val hasReleaseSigning = keystoreFile != null && keystoreFile.isFile &&
+    !storePassword.isNullOrBlank() && !keyAliasEnv.isNullOrBlank() && !keyPasswordEnv.isNullOrBlank()
 
 android {
     namespace = "com.pix.pix"
@@ -27,12 +29,12 @@ android {
     }
 
     signingConfigs {
-        if (hasReleaseSigning) {
+        if (hasReleaseSigning && keystoreFile != null) {
             create("release") {
-                storeFile = file(storePath)
-                storePassword = storePassword
-                keyAlias = keyAliasEnv
-                keyPassword = keyPasswordEnv
+                storeFile = keystoreFile
+                storePassword = storePassword!!
+                keyAlias = keyAliasEnv!!
+                keyPassword = keyPasswordEnv!!
             }
         }
     }

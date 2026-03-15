@@ -43,6 +43,16 @@ flutter build ipa --dart-define=ENV=production --dart-define=BASE_URL=https://pi
 
 IPA создаётся в `build/ios/ipa/`. Дальше загрузка в App Store Connect через Xcode (Organizer) или Transporter.
 
+## Codemagic (iOS)
+
+При сборке iOS в Codemagic с **Automatic** code signing обязательно задайте переменную окружения:
+
+- **`DEVELOPMENT_TEAM`** — ваш Apple Developer Team ID (10 символов).
+
+Team ID можно посмотреть: [developer.apple.com/account](https://developer.apple.com/account) → Membership → Team ID.
+
+Без этой переменной Xcode на билдере выдаст ошибку «No Accounts» / «No profiles for 'com.pixap.pixap'».
+
 ## Переменные окружения
 
 Для production всегда передавайте:

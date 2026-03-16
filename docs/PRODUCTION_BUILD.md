@@ -45,13 +45,38 @@ IPA создаётся в `build/ios/ipa/`. Дальше загрузка в App
 
 ## Codemagic (iOS)
 
-При сборке iOS в Codemagic с **Automatic** code signing обязательно задайте переменную окружения:
+В репозитории есть **`codemagic.yaml`**: сборка iOS идёт по нему, шаг **`xcode-project use-profiles`** выполняется до `flutter build ipa`, подпись настраивается автоматически.
 
-- **`DEVELOPMENT_TEAM`** — ваш Apple Developer Team ID (10 символов).
+Что проверить в Codemagic:
 
-Team ID можно посмотреть: [developer.apple.com/account](https://developer.apple.com/account) → Membership → Team ID.
+1. **Интеграция App Store Connect**  
+   Team/Personal → **Integrations** → **Developer Portal** — добавлен API‑ключ (Issuer ID, Key ID, файл .p8). Имя интеграции в `codemagic.yaml` в `integrations.app_store_connect` должно совпадать с именем ключа в Codemagic (по умолчанию в конфиге — `codemagic`).
 
-Без этой переменной Xcode на билдере выдаст ошибку «No Accounts» / «No profiles for 'com.pixap.pixap'».
+2. **Тип профиля для IPA**  
+   В настройках подписи iOS выберите **App Store** (не Development). Для `flutter build ipa` и загрузки в TestFlight/App Store нужен именно App Store профиль.
+
+3. **Bundle ID**  
+   В настройках подписи и в `codemagic.yaml` должен быть **`com.pixap.pixap`**.
+
+4. **После добавления/изменения codemagic.yaml**  
+   В приложении Codemagic нажмите **Check for configuration file** по нужной ветке, чтобы подхватить `codemagic.yaml`. Дальше запускайте сборку из этого конфига (по триггеру или вручную).
+
+Если сборка по‑прежнему идёт через **Workflow Editor** (без yaml), задайте переменную окружения **`DEVELOPMENT_TEAM`** — ваш Apple Developer Team ID (10 символов). Team ID: [developer.apple.com/account](https://developer.apple.com/account) → Membership → Team ID.
+
+## Codemagic (Android)
+
+Чтобы AAB подписывался в **release** (а не debug), Codemagic должен передать keystore в сборку. В `codemagic.yaml` для этого добавлен workflow **android-workflow** с `android_signing: [pixap-release-keystore]`.
+
+**Что сделать в Codemagic:**
+
+1. **Code signing identities** → вкладка **Android keystores** → **Add keystore** (или загрузить существующий).
+2. Укажите **Reference name**: **`pixap-release-keystore`** (как в `codemagic.yaml`).
+3. Загрузите файл **.jks** или **.keystore**, введите пароль keystore, key alias и key password.
+4. Сохраните. При сборке по workflow **Android Build** Codemagic подставит `CM_KEYSTORE_PATH`, `CM_KEYSTORE_PASSWORD`, `CM_KEY_ALIAS`, `CM_KEY_PASSWORD` — и `build.gradle.kts` подпишет AAB в release.
+
+Если Android собирается через **Workflow Editor** (без yaml), в настройках этого workflow включите **Android code signing** и выберите загруженный keystore (или укажите тот же reference name в конфиге редактора).
+
+Без настроенной подписи сборка использует **debug** keystore, и Google Play отклонит AAB с сообщением «signed in debug mode».
 
 ## Переменные окружения
 

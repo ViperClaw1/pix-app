@@ -1,0 +1,59 @@
+# Codemagic — сборка и подпись iOS/Android через codemagic.yaml.
+#
+# iOS: Team → Integrations → Developer Portal (API key); Code signing → профиль App Store для com.pixap.pixap.
+# Android: Code signing identities → Android keystores → загрузить .jks/.keystore с Reference name ниже.
+
+workflows:
+  android-workflow:
+    name: Android Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    # Reference name из Code signing identities → Android keystores (загрузите .jks и укажите это имя).
+    environment:
+      android_signing:
+        - pixap-release-keystore
+      flutter: stable
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Build AAB
+        script: |
+          flutter build appbundle --release \
+            --dart-define=ENV=production \
+            --dart-define=BASE_URL=https://pixapp.kz
+    artifacts:
+      - build/app/outputs/bundle/release/app-release.aab
+
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    # Имя интеграции = имя ключа в Codemagic (Team → Integrations → Developer Portal).
+    integrations:
+      app_store_connect: codemagic
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.pixap.pixap
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Install CocoaPods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --dart-define=ENV=production \
+            --dart-define=BASE_URL=https://pixapp.kz \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+    # Добавьте publishing (email, app_store_connect и т.д.) при необходимости.

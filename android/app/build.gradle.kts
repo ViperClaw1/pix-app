@@ -10,8 +10,8 @@ val storePath = System.getenv("CM_KEYSTORE_PATH")
 val storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
 val keyAliasEnv = System.getenv("CM_KEY_ALIAS")
 val keyPasswordEnv = System.getenv("CM_KEY_PASSWORD")
-val keystoreFile = storePath?.let { path -> file(path) }
-val hasReleaseSigning = keystoreFile != null && keystoreFile.isFile &&
+val keystoreFile = storePath?.let { file(it) }
+val hasReleaseSigning = keystoreFile != null && keystoreFile.exists() && keystoreFile.isFile &&
     !storePassword.isNullOrBlank() && !keyAliasEnv.isNullOrBlank() && !keyPasswordEnv.isNullOrBlank()
 
 android {
@@ -30,11 +30,15 @@ android {
 
     signingConfigs {
         if (hasReleaseSigning && keystoreFile != null) {
+            val releaseStoreFile = keystoreFile!!
+            val releaseStorePassword = storePassword!!
+            val releaseKeyAlias = keyAliasEnv!!
+            val releaseKeyPassword = keyPasswordEnv!!
             create("release") {
-                storeFile = keystoreFile
-                storePassword = storePassword!!
-                keyAlias = keyAliasEnv!!
-                keyPassword = keyPasswordEnv!!
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }

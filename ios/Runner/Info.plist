@@ -68,13 +68,15 @@
 	</array>
 	<!-- Permissions -->
 	<key>NSCameraUsageDescription</key>
-	<string>PIX использует камеру для загрузки фото и обновления фото профиля.</string>
+	<string>Pixap uses the camera to upload photos and update your profile picture.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>PIX использует галерею для загрузки изображений и файлов.</string>
+	<string>Pixap uses a gallery to upload images and files.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>PIX использует геолокацию для маршрутов, поиска ближайших мест и передачи координат.</string>
+	<string>Pixap uses geolocation for route planning, finding nearby places, and sharing coordinates.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Pixap uses geolocation for navigation, finding nearby places, and sharing coordinates, including running in the background when necessary.</string>
 	<key>NSUserNotificationsUsageDescription</key>
-	<string>PIX отправляет push-уведомления для синхронизации с уведомлениями приложения.</string>
+	<string>Pixap sends push notifications to sync with the app's notifications.</string>
 	<!-- App Transport Security: allow pixapp.kz -->
 	<key>NSAppTransportSecurity</key>
 	<dict>

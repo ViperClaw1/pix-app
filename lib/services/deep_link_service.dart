@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import '../core/logger.dart';
 
 /// Deep Links: Universal Links (iOS), App Links (Android).

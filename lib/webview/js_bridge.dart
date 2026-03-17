@@ -34,8 +34,11 @@ class JsBridge {
     }
     try {
       final picker = ImagePicker();
-      final source = args['source'] == 'gallery' ? ImageSource.gallery : ImageSource.camera;
-      final XFile? file = await picker.pickImage(source: source, imageQuality: 85);
+      final source = args['source'] == 'gallery'
+          ? ImageSource.gallery
+          : ImageSource.camera;
+      final XFile? file =
+          await picker.pickImage(source: source, imageQuality: 85);
       if (file == null) return {'success': false, 'error': 'cancelled'};
       final path = file.path;
       return {'success': true, 'path': path, 'name': file.name};
@@ -47,7 +50,8 @@ class JsBridge {
 
   /// Обработчик: выбор файла (изображение или любой файл).
   Future<Map<String, dynamic>> pickFile(Map<String, dynamic> args) async {
-    final granted = await PermissionService.instance.ensureFileUploadPermissions();
+    final granted =
+        await PermissionService.instance.ensureFileUploadPermissions();
     if (!granted) {
       return {'success': false, 'error': 'permission_denied'};
     }
@@ -89,7 +93,8 @@ class JsBridge {
   }
 
   /// Обработчик: веб-приложение регистрирует получение push-токена (no-op на нативной стороне, можно логировать).
-  Future<Map<String, dynamic>> receivePushToken(Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> receivePushToken(
+      Map<String, dynamic> args) async {
     final token = args['token'] as String?;
     if (token != null) {
       AppLogger.d('JsBridge', 'WebView received push token');
@@ -98,7 +103,8 @@ class JsBridge {
   }
 
   /// Обработчик: открыть внешнюю ссылку в браузере.
-  Future<Map<String, dynamic>> openExternalLink(Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> openExternalLink(
+      Map<String, dynamic> args) async {
     final url = args['url'] as String?;
     if (url == null || url.isEmpty) {
       return {'success': false, 'error': 'missing_url'};
@@ -184,7 +190,8 @@ class JsBridge {
 
   /// Вызов из WebView: единый handler с методом и аргументами.
   Future<dynamic> handleCall(String method, dynamic args) async {
-    final map = args is Map ? Map<String, dynamic>.from(args as Map) : <String, dynamic>{};
+    final map =
+        args is Map ? Map<String, dynamic>.from(args) : <String, dynamic>{};
     switch (method) {
       case 'openCamera':
         return openCamera(map);

@@ -27,20 +27,19 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const FlutterLogo(size: 80),
-            const SizedBox(height: 24),
-            Text(
-              'Pixap',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+            Image.asset(
+              'assets/app_icon.png',
+              width: 160,
+              height: 160,
+              fit: BoxFit.contain,
             ),
             if (Env.isDev || Env.isStaging) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Text(
                 Env.env,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(

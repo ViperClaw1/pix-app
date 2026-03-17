@@ -21,7 +21,7 @@ class PixapApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
-        '/webview': (context) => WebViewPage(
+        '/webview': (context) => const WebViewPage(
               initialUrl: Env.baseUrl,
               channelId: AppConstants.notificationChannelId,
             ),

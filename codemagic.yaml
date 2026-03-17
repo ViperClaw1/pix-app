@@ -30,7 +30,9 @@ workflows:
     name: iOS Build
     max_build_duration: 120
     instance_type: mac_mini_m2
-    # Подпись из загруженных в Code signing identities .p12 и .mobileprovision (без App Store Connect API).
+    # Интеграция — для publishing (загрузка IPA). Имя должно совпадать с ключом в Codemagic (Integrations → Developer Portal).
+    integrations:
+      app_store_connect: pixap
     environment:
       ios_signing:
         distribution_type: app_store
@@ -56,4 +58,7 @@ workflows:
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
-    # Добавьте publishing (email, app_store_connect и т.д.) при необходимости.
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

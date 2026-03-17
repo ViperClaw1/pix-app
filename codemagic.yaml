@@ -1,7 +1,7 @@
 # Codemagic — сборка и подпись iOS/Android через codemagic.yaml.
 #
-# iOS: Team → Integrations → Developer Portal (API key); Code signing → профиль App Store для com.pixap.pixap.
-# Android: Code signing identities → Android keystores → загрузить .jks/.keystore с Reference name ниже.
+# iOS: Code signing identities → загрузить .p12 и App Store .mobileprovision для com.pixap.pixap.
+# Android: Code signing identities → Android keystores → загрузить .jks с Reference name pixap-release-keystore.
 
 workflows:
   android-workflow:
@@ -30,9 +30,7 @@ workflows:
     name: iOS Build
     max_build_duration: 120
     instance_type: mac_mini_m2
-    # Имя интеграции = имя ключа в Codemagic (Team → Integrations → Developer Portal).
-    integrations:
-      app_store_connect: codemagic
+    # Подпись из загруженных в Code signing identities .p12 и .mobileprovision (без App Store Connect API).
     environment:
       ios_signing:
         distribution_type: app_store

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../config/env.dart';
@@ -32,14 +33,32 @@ class _WebViewPageState extends State<WebViewPage> {
   bool _isLoading = true;
   String? _errorMessage;
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  bool _isDarkTheme = true;
 
   @override
   void initState() {
     super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _applySystemUiTheme(dark: _isDarkTheme);
     _initBridge();
     _subscribeToConnectivity();
     _subscribeToNotifications();
     NotificationService.instance.sendTokenToWebViewIfReady();
+  }
+
+  void _applySystemUiTheme({required bool dark}) {
+    final color = dark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
+    final brightness = dark ? Brightness.dark : Brightness.light;
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: color,
+        statusBarIconBrightness: brightness,
+        statusBarBrightness: brightness,
+        systemNavigationBarColor: color,
+        systemNavigationBarIconBrightness: brightness,
+        systemNavigationBarDividerColor: color,
+      ),
+    );
   }
 
   void _initBridge() {
@@ -120,21 +139,59 @@ class _WebViewPageState extends State<WebViewPage> {
     super.dispose();
   }
 
+  Future<void> _syncThemeFromPage(InAppWebViewController controller) async {
+    const detectThemeJs = r'''
+      (function() {
+        var meta = document.querySelector('meta[name="theme-color"]');
+        var content = meta && meta.getAttribute('content');
+        if (content) {
+          var m = content.match(/^#?([0-9a-fA-F]{6})$/);
+          if (m) {
+            var r = parseInt(m[1].substr(0,2), 16), g = parseInt(m[1].substr(2,2), 16), b = parseInt(m[1].substr(4,2), 16);
+            var luminance = (0.299*r + 0.587*g + 0.114*b) / 255;
+            if (window.PixNative && window.PixNative.setTheme)
+              window.PixNative.setTheme({ theme: luminance > 0.5 ? 'light' : 'dark' });
+            return;
+          }
+        }
+        var scheme = document.documentElement.getAttribute('data-theme') || document.documentElement.getAttribute('data-bs-theme');
+        if (scheme === 'light' && window.PixNative && window.PixNative.setTheme)
+          window.PixNative.setTheme({ theme: 'light' });
+        else if (scheme === 'dark' && window.PixNative && window.PixNative.setTheme)
+          window.PixNative.setTheme({ theme: 'dark' });
+      })();
+    ''';
+    try {
+      await controller.evaluateJavascript(source: detectThemeJs);
+    } catch (_) {}
+  }
+
   Future<dynamic> _handleJsCall(List<dynamic> args) async {
     final method = args.isNotEmpty ? args[0] as String? : null;
     final arg = args.length > 1 ? args[1] : <String, dynamic>{};
     if (method == null) return {'success': false, 'error': 'missing_method'};
+    if (method == 'setTheme') {
+      final theme = arg['theme'] as String?;
+      final dark = theme != 'light';
+      if (mounted) {
+        setState(() => _isDarkTheme = dark);
+        _applySystemUiTheme(dark: dark);
+      }
+      return {'success': true};
+    }
     return _jsBridge?.handleCall(method, arg) ??
         {'success': false, 'error': 'bridge_unavailable'};
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = _isDarkTheme ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            InAppWebView(
+      backgroundColor: themeColor,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          InAppWebView(
               key: _webViewKey,
               initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
               initialSettings: InAppWebViewSettings(
@@ -174,6 +231,7 @@ class _WebViewPageState extends State<WebViewPage> {
                 if (js.isNotEmpty) {
                   await controller.evaluateJavascript(source: js);
                 }
+                await _syncThemeFromPage(controller);
                 if (mounted) {
                   setState(() => _isLoading = false);
                 }
@@ -217,17 +275,16 @@ class _WebViewPageState extends State<WebViewPage> {
                     action: PermissionRequestResponseAction.GRANT);
               },
             ),
-            if (_isLoading) const LinearProgressIndicator(),
-            if (_errorMessage != null)
-              ErrorScreen(
-                message: _errorMessage!,
-                onRetry: () {
-                  setState(() => _errorMessage = null);
-                  _controller?.reload();
-                },
-              ),
-          ],
-        ),
+          if (_isLoading) const LinearProgressIndicator(),
+          if (_errorMessage != null)
+            ErrorScreen(
+              message: _errorMessage!,
+              onRetry: () {
+                setState(() => _errorMessage = null);
+                _controller?.reload();
+              },
+            ),
+        ],
       ),
     );
   }

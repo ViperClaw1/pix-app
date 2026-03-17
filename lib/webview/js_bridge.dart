@@ -169,6 +169,14 @@ class JsBridge {
       } else { resolve({ success: false, error: 'bridge_not_ready' }); }
     });
   };
+  window.$handlerName.setTheme = function(args) {
+    return new Promise(function(resolve) {
+      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        window.flutter_inappwebview.callHandler('$handlerName', 'setTheme', args || {})
+          .then(resolve).catch(function(e) { resolve({ success: false, error: String(e) }); });
+      } else { resolve({ success: false, error: 'bridge_not_ready' }); }
+    });
+  };
   window.dispatchEvent(new Event('PixNativeReady'));
 })();
 ''';

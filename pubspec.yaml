@@ -36,6 +36,8 @@ dependencies:
 
   # Ссылки и устройство
   url_launcher: ^6.2.2
+  app_links: ^6.3.2
+  android_intent_plus: ^5.3.1
   device_info_plus: ^9.1.1
 
   # Сеть и состояние

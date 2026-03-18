@@ -1,13 +1,18 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:app_links/app_links.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../config/env.dart';
 import '../core/constants.dart';
 import '../core/logger.dart';
+import '../services/deep_link_service.dart';
 import '../services/notification_service.dart';
 import '../ui/error_screen.dart';
 import 'js_bridge.dart';
@@ -33,6 +38,7 @@ class _WebViewPageState extends State<WebViewPage> {
   bool _isLoading = true;
   String? _errorMessage;
   StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<Uri>? _appLinksSubscription;
   bool _isDarkTheme = true;
 
   @override
@@ -43,6 +49,7 @@ class _WebViewPageState extends State<WebViewPage> {
     _initBridge();
     _subscribeToConnectivity();
     _subscribeToNotifications();
+    _subscribeToAppLinks();
     NotificationService.instance.sendTokenToWebViewIfReady();
   }
 
@@ -132,12 +139,92 @@ class _WebViewPageState extends State<WebViewPage> {
     };
   }
 
+  void _subscribeToAppLinks() {
+    try {
+      final appLinks = AppLinks();
+      _appLinksSubscription = appLinks.uriLinkStream.listen((Uri uri) {
+        DeepLinkService.instance.handleDeepLink(uri.toString());
+      });
+    } catch (e) {
+      AppLogger.e('WebViewPage', '_subscribeToAppLinks', e, null);
+    }
+  }
+
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
+    _appLinksSubscription?.cancel();
     NotificationService.instance.onMessageForWebView = null;
     NotificationService.instance.onTokenForWebView = null;
+    DeepLinkService.instance.onDeepLinkReceived = null;
     super.dispose();
+  }
+
+  /// Returns true if the URI is a Google OAuth/sign-in URL (must open in secure browser).
+  bool _isGoogleOAuthUrl(Uri uri) {
+    final host = uri.host.toLowerCase();
+    final path = uri.path.toLowerCase();
+    if (host == 'accounts.google.com') return true;
+    if (host == 'www.google.com' || host == 'google.com') {
+      return path.startsWith('/o/oauth2') ||
+          path.startsWith('/signin/') ||
+          path.startsWith('/accounts/') ||
+          path.contains('accounts.');
+    }
+    return false;
+  }
+
+  /// Extracts S.browser_fallback_url from an Android intent URL string.
+  String? _parseIntentFallbackUrl(String intentUrl) {
+    final match = RegExp(r'S\.browser_fallback_url=([^;]+)').firstMatch(intentUrl);
+    if (match == null) return null;
+    try {
+      return Uri.decodeComponent(match.group(1)!);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Opens the URL in Chrome Custom Tabs (Android) / SFSafariViewController (iOS).
+  Future<void> _openInChromeSafariBrowser(Uri uri) async {
+    try {
+      final browser = ChromeSafariBrowser();
+      await browser.open(
+        url: WebUri(uri.toString()),
+        options: ChromeSafariBrowserClassOptions(
+          android: AndroidChromeCustomTabsOptions(shareState: CustomTabsShareState.SHARE_STATE_OFF),
+          ios: IOSSafariOptions(barCollapsingEnabled: true),
+        ),
+      );
+    } catch (e) {
+      AppLogger.e('WebViewPage', '_openInChromeSafariBrowser', e, null);
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (e2) {
+        AppLogger.e('WebViewPage', 'launchUrl fallback', e2, null);
+      }
+    }
+  }
+
+  /// Launches Android intent or fallback URL; on iOS launches fallback only.
+  Future<void> _launchIntentOrFallback(String intentUrl, String? fallbackUrl) async {
+    final fallback = fallbackUrl ?? _parseIntentFallbackUrl(intentUrl);
+    if (Platform.isAndroid) {
+      try {
+        final intent = AndroidIntent(data: intentUrl);
+        await intent.launch();
+        return;
+      } catch (e) {
+        AppLogger.d('WebViewPage', 'AndroidIntent failed, using fallback', e);
+      }
+    }
+    if (fallback != null && fallback.startsWith('http')) {
+      try {
+        await launchUrl(Uri.parse(fallback), mode: LaunchMode.externalApplication);
+      } catch (e) {
+        AppLogger.e('WebViewPage', '_launchIntentOrFallback', e, null);
+      }
+    }
   }
 
   Future<void> _syncThemeFromPage(InAppWebViewController controller) async {
@@ -221,6 +308,14 @@ class _WebViewPageState extends State<WebViewPage> {
                 handlerName: AppConstants.jsBridgeHandlerName,
                 callback: _handleJsCall,
               );
+              DeepLinkService.instance.onDeepLinkReceived = (url) {
+                controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+              };
+              final initialLink = DeepLinkService.instance.initialLink;
+              if (initialLink != null && initialLink.isNotEmpty) {
+                controller.loadUrl(urlRequest: URLRequest(url: WebUri(initialLink)));
+                DeepLinkService.instance.setInitialLink(null);
+              }
             },
             onLoadStart: (controller, url) {
               setState(() {
@@ -255,8 +350,13 @@ class _WebViewPageState extends State<WebViewPage> {
             shouldOverrideUrlLoading: (controller, navigationAction) async {
               final uri = navigationAction.request.url;
               if (uri == null) return NavigationActionPolicy.ALLOW;
-              final scheme = uri.scheme;
+              final scheme = uri.scheme.toLowerCase();
+
               if (scheme == 'http' || scheme == 'https') {
+                if (_isGoogleOAuthUrl(uri)) {
+                  _openInChromeSafariBrowser(uri);
+                  return NavigationActionPolicy.CANCEL;
+                }
                 final host = uri.host;
                 if (host == 'pixapp.kz' ||
                     host.endsWith('.pixapp.kz') ||
@@ -265,6 +365,13 @@ class _WebViewPageState extends State<WebViewPage> {
                 }
                 return NavigationActionPolicy.ALLOW;
               }
+
+              if (scheme == 'intent') {
+                final intentUrl = uri.toString();
+                _launchIntentOrFallback(intentUrl, null);
+                return NavigationActionPolicy.CANCEL;
+              }
+
               if (scheme == 'tel' || scheme == 'mailto') {
                 return NavigationActionPolicy.CANCEL;
               }

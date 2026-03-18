@@ -160,10 +160,18 @@ class _WebViewPageState extends State<WebViewPage> {
     super.dispose();
   }
 
-  /// Returns true if the URI is a Google OAuth/sign-in URL (must open in secure browser).
-  bool _isGoogleOAuthUrl(Uri uri) {
+  /// Returns true if the URI is part of an OAuth flow that must open in a secure browser.
+  ///
+  /// Important: the *entire* OAuth flow must stay in the same browser context.
+  /// If we open only the Google page externally but keep the provider (e.g. Lovable) in WebView,
+  /// the provider's state/cookies won't be present in the external browser and the callback will fail.
+  bool _shouldOpenOAuthInSecureBrowser(Uri uri) {
     final host = uri.host.toLowerCase();
     final path = uri.path.toLowerCase();
+
+    // Lovable OAuth broker (seen in your screenshot).
+    if (host == 'oauth.lovable.app') return true;
+
     if (host == 'accounts.google.com') return true;
     if (host == 'www.google.com' || host == 'google.com') {
       return path.startsWith('/o/oauth2') ||
@@ -353,7 +361,7 @@ class _WebViewPageState extends State<WebViewPage> {
               final scheme = uri.scheme.toLowerCase();
 
               if (scheme == 'http' || scheme == 'https') {
-                if (_isGoogleOAuthUrl(uri)) {
+                if (_shouldOpenOAuthInSecureBrowser(uri)) {
                   _openInChromeSafariBrowser(uri);
                   return NavigationActionPolicy.CANCEL;
                 }

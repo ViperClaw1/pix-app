@@ -285,122 +285,125 @@ class _WebViewPageState extends State<WebViewPage> {
         _isDarkTheme ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
     return Scaffold(
       backgroundColor: themeColor,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          InAppWebView(
-            key: _webViewKey,
-            initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              domStorageEnabled: true,
-              databaseEnabled: true,
-              allowFileAccess: true,
-              allowContentAccess: true,
-              mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-              useOnLoadResource: true,
-              useShouldInterceptRequest: true,
-              cacheEnabled: true,
-              clearCache: false,
-              thirdPartyCookiesEnabled: true,
-              mediaPlaybackRequiresUserGesture: false,
-              allowsInlineMediaPlayback: true,
-              useWideViewPort: true,
-              loadWithOverviewMode: true,
-              allowFileAccessFromFileURLs: true,
-              allowUniversalAccessFromFileURLs: true,
-            ),
-            onWebViewCreated: (controller) {
-              _controller = controller;
-              controller.addJavaScriptHandler(
-                handlerName: AppConstants.jsBridgeHandlerName,
-                callback: _handleJsCall,
-              );
-              DeepLinkService.instance.onDeepLinkReceived = (url) {
-                controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
-              };
-              final initialLink = DeepLinkService.instance.initialLink;
-              if (initialLink != null && initialLink.isNotEmpty) {
-                controller.loadUrl(urlRequest: URLRequest(url: WebUri(initialLink)));
-                DeepLinkService.instance.setInitialLink(null);
-              }
-            },
-            onLoadStart: (controller, url) {
-              setState(() {
-                _isLoading = true;
-                _errorMessage = null;
-              });
-            },
-            onLoadStop: (controller, url) async {
-              final js = _jsBridge?.buildInjectScript() ?? '';
-              if (js.isNotEmpty) {
-                await controller.evaluateJavascript(source: js);
-              }
-              await _syncThemeFromPage(controller);
-              if (mounted) {
-                setState(() => _isLoading = false);
-              }
-              NotificationService.instance.sendTokenToWebViewIfReady();
-            },
-            onReceivedError: (controller, request, error) {
-              AppLogger.e('WebViewPage', 'onReceivedError',
-                  '${error.type} ${error.description}', null);
-              if (error.type == WebResourceErrorType.HOST_LOOKUP) {
-                setState(() => _errorMessage = 'Нет подключения к интернету');
-              }
-            },
-            onReceivedHttpError: (controller, request, errorResponse) {
-              final code = errorResponse.statusCode;
-              if (code != null && code >= 400 && _isLoading) {
-                setState(() => _errorMessage = 'Ошибка загрузки ($code)');
-              }
-            },
-            shouldOverrideUrlLoading: (controller, navigationAction) async {
-              final uri = navigationAction.request.url;
-              if (uri == null) return NavigationActionPolicy.ALLOW;
-              final scheme = uri.scheme.toLowerCase();
-
-              if (scheme == 'http' || scheme == 'https') {
-                if (_shouldOpenOAuthInSecureBrowser(uri)) {
-                  _openInChromeSafariBrowser(uri);
-                  return NavigationActionPolicy.CANCEL;
+      body: SafeArea(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            InAppWebView(
+              key: _webViewKey,
+              initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
+              initialSettings: InAppWebViewSettings(
+                javaScriptEnabled: true,
+                domStorageEnabled: true,
+                databaseEnabled: true,
+                allowFileAccess: true,
+                allowContentAccess: true,
+                mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+                useOnLoadResource: true,
+                useShouldInterceptRequest: true,
+                cacheEnabled: true,
+                clearCache: false,
+                thirdPartyCookiesEnabled: true,
+                mediaPlaybackRequiresUserGesture: false,
+                allowsInlineMediaPlayback: true,
+                useWideViewPort: true,
+                loadWithOverviewMode: true,
+                allowFileAccessFromFileURLs: true,
+                allowUniversalAccessFromFileURLs: true,
+              ),
+              onWebViewCreated: (controller) {
+                _controller = controller;
+                controller.addJavaScriptHandler(
+                  handlerName: AppConstants.jsBridgeHandlerName,
+                  callback: _handleJsCall,
+                );
+                DeepLinkService.instance.onDeepLinkReceived = (url) {
+                  controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+                };
+                final initialLink = DeepLinkService.instance.initialLink;
+                if (initialLink != null && initialLink.isNotEmpty) {
+                  controller.loadUrl(
+                      urlRequest: URLRequest(url: WebUri(initialLink)));
+                  DeepLinkService.instance.setInitialLink(null);
                 }
-                final host = uri.host;
-                if (host == 'pixapp.kz' ||
-                    host.endsWith('.pixapp.kz') ||
-                    Env.baseUrl.contains(host)) {
+              },
+              onLoadStart: (controller, url) {
+                setState(() {
+                  _isLoading = true;
+                  _errorMessage = null;
+                });
+              },
+              onLoadStop: (controller, url) async {
+                final js = _jsBridge?.buildInjectScript() ?? '';
+                if (js.isNotEmpty) {
+                  await controller.evaluateJavascript(source: js);
+                }
+                await _syncThemeFromPage(controller);
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                }
+                NotificationService.instance.sendTokenToWebViewIfReady();
+              },
+              onReceivedError: (controller, request, error) {
+                AppLogger.e('WebViewPage', 'onReceivedError',
+                    '${error.type} ${error.description}', null);
+                if (error.type == WebResourceErrorType.HOST_LOOKUP) {
+                  setState(() => _errorMessage = 'Нет подключения к интернету');
+                }
+              },
+              onReceivedHttpError: (controller, request, errorResponse) {
+                final code = errorResponse.statusCode;
+                if (code != null && code >= 400 && _isLoading) {
+                  setState(() => _errorMessage = 'Ошибка загрузки ($code)');
+                }
+              },
+              shouldOverrideUrlLoading: (controller, navigationAction) async {
+                final uri = navigationAction.request.url;
+                if (uri == null) return NavigationActionPolicy.ALLOW;
+                final scheme = uri.scheme.toLowerCase();
+
+                if (scheme == 'http' || scheme == 'https') {
+                  if (_shouldOpenOAuthInSecureBrowser(uri)) {
+                    _openInChromeSafariBrowser(uri);
+                    return NavigationActionPolicy.CANCEL;
+                  }
+                  final host = uri.host;
+                  if (host == 'pixapp.kz' ||
+                      host.endsWith('.pixapp.kz') ||
+                      Env.baseUrl.contains(host)) {
+                    return NavigationActionPolicy.ALLOW;
+                  }
                   return NavigationActionPolicy.ALLOW;
                 }
+
+                if (scheme == 'intent') {
+                  final intentUrl = uri.toString();
+                  _launchIntentOrFallback(intentUrl, null);
+                  return NavigationActionPolicy.CANCEL;
+                }
+
+                if (scheme == 'tel' || scheme == 'mailto') {
+                  return NavigationActionPolicy.CANCEL;
+                }
                 return NavigationActionPolicy.ALLOW;
-              }
-
-              if (scheme == 'intent') {
-                final intentUrl = uri.toString();
-                _launchIntentOrFallback(intentUrl, null);
-                return NavigationActionPolicy.CANCEL;
-              }
-
-              if (scheme == 'tel' || scheme == 'mailto') {
-                return NavigationActionPolicy.CANCEL;
-              }
-              return NavigationActionPolicy.ALLOW;
-            },
-            androidOnPermissionRequest: (controller, origin, resources) async {
-              return PermissionRequestResponse(
-                  resources: resources,
-                  action: PermissionRequestResponseAction.GRANT);
-            },
-          ),
-          if (_isLoading) const LinearProgressIndicator(),
-          if (_errorMessage != null)
-            ErrorScreen(
-              message: _errorMessage!,
-              onRetry: () {
-                setState(() => _errorMessage = null);
-                _controller?.reload();
+              },
+              androidOnPermissionRequest: (controller, origin, resources) async {
+                return PermissionRequestResponse(
+                    resources: resources,
+                    action: PermissionRequestResponseAction.GRANT);
               },
             ),
-        ],
+            if (_isLoading) const LinearProgressIndicator(),
+            if (_errorMessage != null)
+              ErrorScreen(
+                message: _errorMessage!,
+                onRetry: () {
+                  setState(() => _errorMessage = null);
+                  _controller?.reload();
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

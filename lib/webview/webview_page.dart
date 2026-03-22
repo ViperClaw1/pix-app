@@ -53,19 +53,35 @@ class _WebViewPageState extends State<WebViewPage> {
     NotificationService.instance.sendTokenToWebViewIfReady();
   }
 
-  void _applySystemUiTheme({required bool dark}) {
-    final color = dark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
-    final brightness = dark ? Brightness.dark : Brightness.light;
-    SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
-        statusBarColor: color,
-        statusBarIconBrightness: brightness,
-        statusBarBrightness: brightness,
-        systemNavigationBarColor: color,
-        systemNavigationBarIconBrightness: brightness,
-        systemNavigationBarDividerColor: color,
-      ),
+  /// Theme colors for status bar / home-indicator areas (match web light/dark).
+  static Color _themeSurfaceColor(bool dark) =>
+      dark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
+
+  /// Per-platform overlay style: iOS uses [statusBarBrightness]; Android uses
+  /// [statusBarIconBrightness] / system navigation bar colors.
+  SystemUiOverlayStyle _systemUiOverlayStyleForTheme(bool dark) {
+    final color = _themeSurfaceColor(dark);
+    if (Platform.isIOS) {
+      // Transparent status bar so explicit [ColoredBox] insets match the web theme.
+      // Brightness.dark => light status bar content (for dark backgrounds).
+      return SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+      );
+    }
+    return SystemUiOverlayStyle(
+      statusBarColor: color,
+      statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: dark ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: color,
+      systemNavigationBarIconBrightness:
+          dark ? Brightness.light : Brightness.dark,
+      systemNavigationBarDividerColor: color,
     );
+  }
+
+  void _applySystemUiTheme({required bool dark}) {
+    SystemChrome.setSystemUIOverlayStyle(_systemUiOverlayStyleForTheme(dark));
   }
 
   void _initBridge() {
@@ -184,7 +200,8 @@ class _WebViewPageState extends State<WebViewPage> {
 
   /// Extracts S.browser_fallback_url from an Android intent URL string.
   String? _parseIntentFallbackUrl(String intentUrl) {
-    final match = RegExp(r'S\.browser_fallback_url=([^;]+)').firstMatch(intentUrl);
+    final match =
+        RegExp(r'S\.browser_fallback_url=([^;]+)').firstMatch(intentUrl);
     if (match == null) return null;
     try {
       return Uri.decodeComponent(match.group(1)!);
@@ -200,7 +217,8 @@ class _WebViewPageState extends State<WebViewPage> {
       await browser.open(
         url: WebUri(uri.toString()),
         options: ChromeSafariBrowserClassOptions(
-          android: AndroidChromeCustomTabsOptions(shareState: CustomTabsShareState.SHARE_STATE_OFF),
+          android: AndroidChromeCustomTabsOptions(
+              shareState: CustomTabsShareState.SHARE_STATE_OFF),
           ios: IOSSafariOptions(barCollapsingEnabled: true),
         ),
       );
@@ -215,7 +233,8 @@ class _WebViewPageState extends State<WebViewPage> {
   }
 
   /// Launches Android intent or fallback URL; on iOS launches fallback only.
-  Future<void> _launchIntentOrFallback(String intentUrl, String? fallbackUrl) async {
+  Future<void> _launchIntentOrFallback(
+      String intentUrl, String? fallbackUrl) async {
     final fallback = fallbackUrl ?? _parseIntentFallbackUrl(intentUrl);
     if (Platform.isAndroid) {
       try {
@@ -228,7 +247,8 @@ class _WebViewPageState extends State<WebViewPage> {
     }
     if (fallback != null && fallback.startsWith('http')) {
       try {
-        await launchUrl(Uri.parse(fallback), mode: LaunchMode.externalApplication);
+        await launchUrl(Uri.parse(fallback),
+            mode: LaunchMode.externalApplication);
       } catch (e) {
         AppLogger.e('WebViewPage', '_launchIntentOrFallback', e, null);
       }
@@ -281,127 +301,163 @@ class _WebViewPageState extends State<WebViewPage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor =
-        _isDarkTheme ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
-    return Scaffold(
-      backgroundColor: themeColor,
-      body: SafeArea(
-        child: Stack(
+    final themeColor = _themeSurfaceColor(_isDarkTheme);
+    final topInset = MediaQuery.paddingOf(context).top;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: _systemUiOverlayStyleForTheme(_isDarkTheme),
+      child: Scaffold(
+        backgroundColor: themeColor,
+        body: Stack(
           fit: StackFit.expand,
           children: [
-            InAppWebView(
-              key: _webViewKey,
-              initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
-              initialSettings: InAppWebViewSettings(
-                javaScriptEnabled: true,
-                domStorageEnabled: true,
-                databaseEnabled: true,
-                allowFileAccess: true,
-                allowContentAccess: true,
-                mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-                useOnLoadResource: true,
-                useShouldInterceptRequest: true,
-                cacheEnabled: true,
-                clearCache: false,
-                thirdPartyCookiesEnabled: true,
-                mediaPlaybackRequiresUserGesture: false,
-                allowsInlineMediaPlayback: true,
-                useWideViewPort: true,
-                loadWithOverviewMode: true,
-                allowFileAccessFromFileURLs: true,
-                allowUniversalAccessFromFileURLs: true,
+            // iOS: explicit strips for status bar + home indicator so they match
+            // the web theme (SafeArea is transparent there). Android: same for
+            // gesture/nav inset when present.
+            if (topInset > 0)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: topInset,
+                child: ColoredBox(color: themeColor),
               ),
-              onWebViewCreated: (controller) {
-                _controller = controller;
-                controller.addJavaScriptHandler(
-                  handlerName: AppConstants.jsBridgeHandlerName,
-                  callback: _handleJsCall,
-                );
-                DeepLinkService.instance.onDeepLinkReceived = (url) {
-                  controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
-                };
-                final initialLink = DeepLinkService.instance.initialLink;
-                if (initialLink != null && initialLink.isNotEmpty) {
-                  controller.loadUrl(
-                      urlRequest: URLRequest(url: WebUri(initialLink)));
-                  DeepLinkService.instance.setInitialLink(null);
-                }
-              },
-              onLoadStart: (controller, url) {
-                setState(() {
-                  _isLoading = true;
-                  _errorMessage = null;
-                });
-              },
-              onLoadStop: (controller, url) async {
-                final js = _jsBridge?.buildInjectScript() ?? '';
-                if (js.isNotEmpty) {
-                  await controller.evaluateJavascript(source: js);
-                }
-                await _syncThemeFromPage(controller);
-                if (mounted) {
-                  setState(() => _isLoading = false);
-                }
-                NotificationService.instance.sendTokenToWebViewIfReady();
-              },
-              onReceivedError: (controller, request, error) {
-                AppLogger.e('WebViewPage', 'onReceivedError',
-                    '${error.type} ${error.description}', null);
-                if (error.type == WebResourceErrorType.HOST_LOOKUP) {
-                  setState(() => _errorMessage = 'Нет подключения к интернету');
-                }
-              },
-              onReceivedHttpError: (controller, request, errorResponse) {
-                final code = errorResponse.statusCode;
-                if (code != null && code >= 400 && _isLoading) {
-                  setState(() => _errorMessage = 'Ошибка загрузки ($code)');
-                }
-              },
-              shouldOverrideUrlLoading: (controller, navigationAction) async {
-                final uri = navigationAction.request.url;
-                if (uri == null) return NavigationActionPolicy.ALLOW;
-                final scheme = uri.scheme.toLowerCase();
+            if (bottomInset > 0)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: bottomInset,
+                child: ColoredBox(color: themeColor),
+              ),
+            SafeArea(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  InAppWebView(
+                    key: _webViewKey,
+                    initialUrlRequest:
+                        URLRequest(url: WebUri(widget.initialUrl)),
+                    initialSettings: InAppWebViewSettings(
+                      javaScriptEnabled: true,
+                      domStorageEnabled: true,
+                      databaseEnabled: true,
+                      allowFileAccess: true,
+                      allowContentAccess: true,
+                      mixedContentMode:
+                          MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+                      useOnLoadResource: true,
+                      useShouldInterceptRequest: true,
+                      cacheEnabled: true,
+                      clearCache: false,
+                      thirdPartyCookiesEnabled: true,
+                      mediaPlaybackRequiresUserGesture: false,
+                      allowsInlineMediaPlayback: true,
+                      useWideViewPort: true,
+                      loadWithOverviewMode: true,
+                      allowFileAccessFromFileURLs: true,
+                      allowUniversalAccessFromFileURLs: true,
+                    ),
+                    onWebViewCreated: (controller) {
+                      _controller = controller;
+                      controller.addJavaScriptHandler(
+                        handlerName: AppConstants.jsBridgeHandlerName,
+                        callback: _handleJsCall,
+                      );
+                      DeepLinkService.instance.onDeepLinkReceived = (url) {
+                        controller.loadUrl(
+                            urlRequest: URLRequest(url: WebUri(url)));
+                      };
+                      final initialLink = DeepLinkService.instance.initialLink;
+                      if (initialLink != null && initialLink.isNotEmpty) {
+                        controller.loadUrl(
+                            urlRequest: URLRequest(url: WebUri(initialLink)));
+                        DeepLinkService.instance.setInitialLink(null);
+                      }
+                    },
+                    onLoadStart: (controller, url) {
+                      setState(() {
+                        _isLoading = true;
+                        _errorMessage = null;
+                      });
+                    },
+                    onLoadStop: (controller, url) async {
+                      final js = _jsBridge?.buildInjectScript() ?? '';
+                      if (js.isNotEmpty) {
+                        await controller.evaluateJavascript(source: js);
+                      }
+                      await _syncThemeFromPage(controller);
+                      if (mounted) {
+                        setState(() => _isLoading = false);
+                      }
+                      NotificationService.instance.sendTokenToWebViewIfReady();
+                    },
+                    onReceivedError: (controller, request, error) {
+                      AppLogger.e('WebViewPage', 'onReceivedError',
+                          '${error.type} ${error.description}', null);
+                      if (error.type == WebResourceErrorType.HOST_LOOKUP) {
+                        setState(() =>
+                            _errorMessage = 'Нет подключения к интернету');
+                      }
+                    },
+                    onReceivedHttpError: (controller, request, errorResponse) {
+                      final code = errorResponse.statusCode;
+                      if (code != null && code >= 400 && _isLoading) {
+                        setState(
+                            () => _errorMessage = 'Ошибка загрузки ($code)');
+                      }
+                    },
+                    shouldOverrideUrlLoading:
+                        (controller, navigationAction) async {
+                      final uri = navigationAction.request.url;
+                      if (uri == null) return NavigationActionPolicy.ALLOW;
+                      final scheme = uri.scheme.toLowerCase();
 
-                if (scheme == 'http' || scheme == 'https') {
-                  if (_shouldOpenOAuthInSecureBrowser(uri)) {
-                    _openInChromeSafariBrowser(uri);
-                    return NavigationActionPolicy.CANCEL;
-                  }
-                  final host = uri.host;
-                  if (host == 'pixapp.kz' ||
-                      host.endsWith('.pixapp.kz') ||
-                      Env.baseUrl.contains(host)) {
-                    return NavigationActionPolicy.ALLOW;
-                  }
-                  return NavigationActionPolicy.ALLOW;
-                }
+                      if (scheme == 'http' || scheme == 'https') {
+                        if (_shouldOpenOAuthInSecureBrowser(uri)) {
+                          _openInChromeSafariBrowser(uri);
+                          return NavigationActionPolicy.CANCEL;
+                        }
+                        final host = uri.host;
+                        if (host == 'pixapp.kz' ||
+                            host.endsWith('.pixapp.kz') ||
+                            Env.baseUrl.contains(host)) {
+                          return NavigationActionPolicy.ALLOW;
+                        }
+                        return NavigationActionPolicy.ALLOW;
+                      }
 
-                if (scheme == 'intent') {
-                  final intentUrl = uri.toString();
-                  _launchIntentOrFallback(intentUrl, null);
-                  return NavigationActionPolicy.CANCEL;
-                }
+                      if (scheme == 'intent') {
+                        final intentUrl = uri.toString();
+                        _launchIntentOrFallback(intentUrl, null);
+                        return NavigationActionPolicy.CANCEL;
+                      }
 
-                if (scheme == 'tel' || scheme == 'mailto') {
-                  return NavigationActionPolicy.CANCEL;
-                }
-                return NavigationActionPolicy.ALLOW;
-              },
-              androidOnPermissionRequest: (controller, origin, resources) async {
-                return PermissionRequestResponse(
-                    resources: resources,
-                    action: PermissionRequestResponseAction.GRANT);
-              },
+                      if (scheme == 'tel' || scheme == 'mailto') {
+                        return NavigationActionPolicy.CANCEL;
+                      }
+                      return NavigationActionPolicy.ALLOW;
+                    },
+                    androidOnPermissionRequest:
+                        (controller, origin, resources) async {
+                      return PermissionRequestResponse(
+                          resources: resources,
+                          action: PermissionRequestResponseAction.GRANT);
+                    },
+                  ),
+                  if (_isLoading) const LinearProgressIndicator(),
+                  if (_errorMessage != null)
+                    ErrorScreen(
+                      message: _errorMessage!,
+                      onRetry: () {
+                        setState(() => _errorMessage = null);
+                        _controller?.reload();
+                      },
+                    ),
+                ],
+              ),
             ),
-            if (_isLoading) const LinearProgressIndicator(),
-            if (_errorMessage != null)
-              ErrorScreen(
-                message: _errorMessage!,
-                onRetry: () {
-                  setState(() => _errorMessage = null);
-                  _controller?.reload();
-                },
-              ),
           ],
         ),
       ),

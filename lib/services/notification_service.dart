@@ -8,7 +8,9 @@ import '../core/logger.dart';
 /// - Нативные push приходят через FCM.
 /// - Токен отправляется в WebView (receivePushToken) для синхронизации с бэкендом.
 /// - События push дублируются в WebView через postMessage (pushNotificationReceived).
-/// Альтернативы: WebSocket bridge, REST polling, JS bridge — для синхронизации in-app уведомлений.
+///
+/// Запрос разрешения на уведомления выполняется в [InitialPermissionsService]
+/// при первом запуске (порядок с камерой/хранилищем/геолокацией), не в [initialize].
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
@@ -16,31 +18,36 @@ class NotificationService {
   String? _fcmToken;
   String? get fcmToken => _fcmToken;
 
+  bool _listenersAttached = false;
+
   /// Колбэк для передачи payload в WebView (pushNotificationReceived).
   void Function(Map<String, dynamic> payload)? onMessageForWebView;
 
   /// Колбэк для передачи FCM токена в WebView (receivePushToken).
   void Function(String token)? onTokenForWebView;
 
+  /// Регистрация слушателей FCM (без запроса разрешения на уведомления).
   Future<void> initialize() async {
-    await _requestPermission();
-    _fcmToken = await FirebaseMessaging.instance.getToken();
-    if (_fcmToken != null) {
-      AppLogger.d('NotificationService', 'FCM token: ${_fcmToken!.substring(0, 20)}...');
-      onTokenForWebView?.call(_fcmToken!);
+    if (!_listenersAttached) {
+      FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+      FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
+      _listenersAttached = true;
     }
+    await refreshFcmToken();
+  }
 
-  FirebaseMessaging.onMessage.listen(_onForegroundMessage);
-  FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
-}
-
-  Future<void> _requestPermission() async {
-    final settings = await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    AppLogger.d('NotificationService', 'Permission: ${settings.authorizationStatus}');
+  /// Обновить FCM-токен и уведомить WebView (вызывать после запроса разрешений).
+  Future<void> refreshFcmToken() async {
+    try {
+      _fcmToken = await FirebaseMessaging.instance.getToken();
+      if (_fcmToken != null) {
+        AppLogger.d(
+            'NotificationService', 'FCM token: ${_fcmToken!.substring(0, 20)}...');
+        onTokenForWebView?.call(_fcmToken!);
+      }
+    } catch (e, st) {
+      AppLogger.e('NotificationService', 'refreshFcmToken', e, st);
+    }
   }
 
   void _onForegroundMessage(RemoteMessage message) {

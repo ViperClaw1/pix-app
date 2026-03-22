@@ -11,4 +11,8 @@ class AppConstants {
 
   /// Имя JS handler для bridge (должно совпадать с веб-приложением).
   static const String jsBridgeHandlerName = 'PixNative';
+
+  /// SharedPreferences: однократный запрос разрешений при первом запуске.
+  static const String prefsInitialPermissionsCompleted =
+      'initial_permissions_completed';
 }

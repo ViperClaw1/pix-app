@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../config/env.dart';
+import '../services/initial_permissions_service.dart';
+import '../services/notification_service.dart';
 
 /// Экран загрузки перед открытием WebView.
 /// Проверяет окружение и переходит на WebView.
@@ -20,6 +22,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToWebView() async {
     await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+    await InitialPermissionsService.runIfNeeded();
+    if (!mounted) return;
+    await NotificationService.instance.refreshFcmToken();
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/webview');
   }

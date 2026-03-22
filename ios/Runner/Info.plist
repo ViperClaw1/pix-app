@@ -94,5 +94,8 @@
 		<!-- Universal Links: associated domain is set in Signing & Capabilities -->
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<!-- Let Flutter / SystemChrome control status bar style (AnnotatedRegion). -->
+		<key>UIViewControllerBasedStatusBarAppearance</key>
+		<false/>
 	</dict>
 </plist>

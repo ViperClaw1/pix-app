@@ -57,21 +57,24 @@ class _WebViewPageState extends State<WebViewPage> {
   static Color _themeSurfaceColor(bool dark) =>
       dark ? const Color(0xFF121212) : const Color(0xFFF5F5F5);
 
-  /// Per-platform overlay style: iOS uses [statusBarBrightness]; Android uses
-  /// [statusBarIconBrightness] / system navigation bar colors.
+  /// Per-platform overlay style. iOS needs explicit [statusBarIconBrightness]
+  /// (same semantics as Android); [statusBarBrightness] alone is unreliable on
+  /// recent iOS + edge-to-edge. [systemStatusBarContrastEnforced] avoids iOS
+  /// forcing the wrong icon contrast over transparent bars.
   SystemUiOverlayStyle _systemUiOverlayStyleForTheme(bool dark) {
     final color = _themeSurfaceColor(dark);
+    final iconBrightness = dark ? Brightness.light : Brightness.dark;
     if (Platform.isIOS) {
-      // Transparent status bar so explicit [ColoredBox] insets match the web theme.
-      // Brightness.dark => light status bar content (for dark backgrounds).
       return SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
+        statusBarIconBrightness: iconBrightness,
         statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+        systemStatusBarContrastEnforced: false,
       );
     }
     return SystemUiOverlayStyle(
       statusBarColor: color,
-      statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+      statusBarIconBrightness: iconBrightness,
       statusBarBrightness: dark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: color,
       systemNavigationBarIconBrightness:
@@ -292,6 +295,11 @@ class _WebViewPageState extends State<WebViewPage> {
       if (mounted) {
         setState(() => _isDarkTheme = dark);
         _applySystemUiTheme(dark: dark);
+        if (Platform.isIOS) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _applySystemUiTheme(dark: _isDarkTheme);
+          });
+        }
       }
       return {'success': true};
     }

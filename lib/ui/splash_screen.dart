@@ -5,7 +5,7 @@ import '../services/initial_permissions_service.dart';
 import '../services/notification_service.dart';
 
 /// Экран загрузки перед открытием WebView.
-/// Проверяет окружение и переходит на WebView.
+/// После первого кадра сразу запускает цепочку разрешений (первый запуск), затем WebView.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -17,11 +17,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _navigateToWebView());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _afterSplashShown());
   }
 
-  void _navigateToWebView() async {
-    await Future.delayed(const Duration(milliseconds: 800));
+  /// Сразу после отрисовки splash: разрешения (если первый запуск) → FCM → WebView.
+  Future<void> _afterSplashShown() async {
     if (!mounted) return;
     await InitialPermissionsService.runIfNeeded();
     if (!mounted) return;
